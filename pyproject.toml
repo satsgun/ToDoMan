@@ -1,0 +1,5 @@
+[project]
+name = "todoman"
+version = "0.1.0"
+description = "A minimal command-line to-do manager"
+requires-python = ">=3.10"
