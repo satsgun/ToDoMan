@@ -1,8 +1,15 @@
 import argparse
 
+from todo import storage
+from todo.models import Task
+
 
 def cmd_add(args: argparse.Namespace) -> None:
-    print("not yet implemented: add")
+    tasks = storage.load()
+    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=args.title)
+    tasks.append(task)
+    storage.save(tasks)
+    print(f"Added task #{task.id}: {task.title}")
 
 
 def cmd_list(args: argparse.Namespace) -> None:
