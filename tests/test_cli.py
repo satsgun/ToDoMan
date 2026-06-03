@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import cmd_add, cmd_done, cmd_list
+from todo.cli import cmd_add, cmd_delete, cmd_done, cmd_list
 from todo.models import Task
 
 
@@ -156,3 +156,55 @@ class TestCmdDone(unittest.TestCase):
         tasks = storage.load()
         self.assertTrue(tasks[0].done)
         self.assertFalse(tasks[1].done)
+
+
+class TestCmdDelete(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+    def _delete(self, task_id: int):
+        cmd_delete(argparse.Namespace(id=task_id))
+
+    def test_delete_removes_task(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        self._delete(1)
+        self.assertEqual(storage.load(), [])
+
+    def test_delete_prints_confirmation(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._delete(1)
+            mock_print.assert_called_once_with("Deleted task #1.")
+
+    def test_unknown_id_prints_error(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._delete(99)
+            mock_print.assert_called_once_with("Error: no task with ID 99.")
+
+    def test_unknown_id_does_not_modify_tasks(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        self._delete(99)
+        self.assertEqual(len(storage.load()), 1)
+
+    def test_delete_only_removes_target(self):
+        storage.save([Task(id=1, title="A"), Task(id=2, title="B")])
+        self._delete(1)
+        tasks = storage.load()
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0].id, 2)
+
+    def test_add_after_delete_uses_max_existing_id(self):
+        storage.save([Task(id=1, title="A"), Task(id=3, title="C")])
+        self._delete(3)
+        cmd_add(argparse.Namespace(title="D"))
+        ids = [t.id for t in storage.load()]
+        # max remaining id is 1, so next is 2 — no gap-skipping needed
+        self.assertEqual(ids, [1, 2])

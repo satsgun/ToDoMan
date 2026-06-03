@@ -34,7 +34,13 @@ def cmd_done(args: argparse.Namespace) -> None:
 
 
 def cmd_delete(args: argparse.Namespace) -> None:
-    print("not yet implemented: delete")
+    tasks = storage.load()
+    remaining = [t for t in tasks if t.id != args.id]
+    if len(remaining) == len(tasks):
+        print(f"Error: no task with ID {args.id}.")
+        return
+    storage.save(remaining)
+    print(f"Deleted task #{args.id}.")
 
 
 def build_parser() -> argparse.ArgumentParser:
