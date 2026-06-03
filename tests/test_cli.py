@@ -6,8 +6,26 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import cmd_add, cmd_delete, cmd_done, cmd_list
+from todo.cli import cmd_add, cmd_delete, cmd_done, cmd_list, positive_int
 from todo.models import Task
+
+
+class TestPositiveInt(unittest.TestCase):
+    def test_valid_positive(self):
+        self.assertEqual(positive_int("1"), 1)
+        self.assertEqual(positive_int("42"), 42)
+
+    def test_zero_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            positive_int("0")
+
+    def test_negative_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            positive_int("-5")
+
+    def test_non_integer_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            positive_int("abc")
 
 
 class TestCmdAdd(unittest.TestCase):
@@ -53,6 +71,18 @@ class TestCmdAdd(unittest.TestCase):
         with unittest.mock.patch("builtins.print") as mock_print:
             self._add("Buy milk")
             mock_print.assert_called_once_with("Added task #1: Buy milk")
+
+    def test_add_blank_title_rejected(self):
+        with self.assertRaises(SystemExit):
+            self._add("")
+
+    def test_add_whitespace_only_title_rejected(self):
+        with self.assertRaises(SystemExit):
+            self._add("   ")
+
+    def test_add_strips_surrounding_whitespace(self):
+        self._add("  Buy milk  ")
+        self.assertEqual(storage.load()[0].title, "Buy milk")
 
 
 class TestCmdList(unittest.TestCase):
@@ -145,10 +175,17 @@ class TestCmdDone(unittest.TestCase):
         self._done(99)
         self.assertFalse(storage.load()[0].done)
 
-    def test_done_is_idempotent(self):
+    def test_already_done_prints_notice(self):
         storage.save([Task(id=1, title="Buy milk", done=True)])
-        self._done(1)
-        self.assertTrue(storage.load()[0].done)
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._done(1)
+            mock_print.assert_called_once_with("Task #1 is already done.")
+
+    def test_already_done_does_not_save(self):
+        storage.save([Task(id=1, title="Buy milk", done=True)])
+        with patch.object(storage, "save") as mock_save:
+            self._done(1)
+            mock_save.assert_not_called()
 
     def test_only_target_task_is_marked(self):
         storage.save([Task(id=1, title="A"), Task(id=2, title="B")])

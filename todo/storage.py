@@ -23,7 +23,10 @@ def load() -> list[Task]:
 
 
 def save(tasks: list[Task]) -> None:
-    STORAGE_PATH.write_text(
-        json.dumps([asdict(t) for t in tasks], indent=2),
-        encoding="utf-8",
-    )
+    try:
+        STORAGE_PATH.write_text(
+            json.dumps([asdict(t) for t in tasks], indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        sys.exit(f"Error: could not write to {STORAGE_PATH}.\nDetails: {exc}")

@@ -1,12 +1,26 @@
 import argparse
+import sys
 
 from todo import storage
 from todo.models import Task
 
 
+def positive_int(value: str) -> int:
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{value}' is not an integer")
+    if n <= 0:
+        raise argparse.ArgumentTypeError(f"ID must be a positive integer, got {value}")
+    return n
+
+
 def cmd_add(args: argparse.Namespace) -> None:
+    title = args.title.strip()
+    if not title:
+        sys.exit("Error: task title cannot be blank.")
     tasks = storage.load()
-    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=args.title)
+    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title)
     tasks.append(task)
     storage.save(tasks)
     print(f"Added task #{task.id}: {task.title}")
@@ -26,6 +40,9 @@ def cmd_done(args: argparse.Namespace) -> None:
     tasks = storage.load()
     for t in tasks:
         if t.id == args.id:
+            if t.done:
+                print(f"Task #{t.id} is already done.")
+                return
             t.done = True
             storage.save(tasks)
             print(f"Marked task #{t.id} as done.")
@@ -59,11 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_list.set_defaults(func=cmd_list)
 
     p_done = sub.add_parser("done", help="Mark a task as complete")
-    p_done.add_argument("id", type=int, help="Task ID")
+    p_done.add_argument("id", type=positive_int, help="Task ID")
     p_done.set_defaults(func=cmd_done)
 
     p_del = sub.add_parser("delete", help="Delete a task")
-    p_del.add_argument("id", type=int, help="Task ID")
+    p_del.add_argument("id", type=positive_int, help="Task ID")
     p_del.set_defaults(func=cmd_delete)
 
     return parser

@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 from unittest.mock import patch
 
@@ -90,6 +91,11 @@ class TestStorage(unittest.TestCase):
         self._path.write_text("not valid json")
         with self.assertRaises(SystemExit):
             storage.load()
+
+    def test_save_oserror_exits(self):
+        with unittest.mock.patch("pathlib.Path.write_text", side_effect=OSError("disk full")):
+            with self.assertRaises(SystemExit):
+                storage.save([make_task()])
 
 
 if __name__ == "__main__":
