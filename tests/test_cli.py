@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import cmd_add, cmd_list
+from todo.cli import cmd_add, cmd_done, cmd_list
 from todo.models import Task
 
 
@@ -102,3 +102,57 @@ class TestCmdList(unittest.TestCase):
             calls = [c.args[0] for c in mock_print.call_args_list]
             self.assertEqual(calls[0], "[ ] #2  Second")
             self.assertEqual(calls[1], "[ ] #1  First")
+
+
+class TestCmdDone(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+    def _done(self, task_id: int):
+        cmd_done(argparse.Namespace(id=task_id))
+
+    def test_marks_task_done(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        self._done(1)
+        self.assertTrue(storage.load()[0].done)
+
+    def test_persists_done_flag(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        self._done(1)
+        self.assertTrue(storage.load()[0].done)
+
+    def test_prints_confirmation(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._done(1)
+            mock_print.assert_called_once_with("Marked task #1 as done.")
+
+    def test_unknown_id_prints_error(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._done(99)
+            mock_print.assert_called_once_with("Error: no task with ID 99.")
+
+    def test_unknown_id_does_not_save(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        self._done(99)
+        self.assertFalse(storage.load()[0].done)
+
+    def test_done_is_idempotent(self):
+        storage.save([Task(id=1, title="Buy milk", done=True)])
+        self._done(1)
+        self.assertTrue(storage.load()[0].done)
+
+    def test_only_target_task_is_marked(self):
+        storage.save([Task(id=1, title="A"), Task(id=2, title="B")])
+        self._done(1)
+        tasks = storage.load()
+        self.assertTrue(tasks[0].done)
+        self.assertFalse(tasks[1].done)

@@ -23,7 +23,14 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 
 def cmd_done(args: argparse.Namespace) -> None:
-    print("not yet implemented: done")
+    tasks = storage.load()
+    for t in tasks:
+        if t.id == args.id:
+            t.done = True
+            storage.save(tasks)
+            print(f"Marked task #{t.id} as done.")
+            return
+    print(f"Error: no task with ID {args.id}.")
 
 
 def cmd_delete(args: argparse.Namespace) -> None:
