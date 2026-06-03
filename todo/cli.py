@@ -13,7 +13,13 @@ def cmd_add(args: argparse.Namespace) -> None:
 
 
 def cmd_list(args: argparse.Namespace) -> None:
-    print("not yet implemented: list")
+    tasks = storage.load()
+    if not tasks:
+        print("No tasks yet. Use `todo add <title>` to create one.")
+        return
+    for t in tasks:
+        status = "x" if t.done else " "
+        print(f"[{status}] #{t.id}  {t.title}")
 
 
 def cmd_done(args: argparse.Namespace) -> None:

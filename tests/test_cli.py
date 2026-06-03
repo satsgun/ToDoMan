@@ -6,7 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import cmd_add
+from todo.cli import cmd_add, cmd_list
+from todo.models import Task
 
 
 class TestCmdAdd(unittest.TestCase):
@@ -52,3 +53,52 @@ class TestCmdAdd(unittest.TestCase):
         with unittest.mock.patch("builtins.print") as mock_print:
             self._add("Buy milk")
             mock_print.assert_called_once_with("Added task #1: Buy milk")
+
+
+class TestCmdList(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+    def _list(self):
+        cmd_list(argparse.Namespace())
+
+    def test_list_empty(self):
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            mock_print.assert_called_once_with(
+                "No tasks yet. Use `todo add <title>` to create one."
+            )
+
+    def test_list_pending_task(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            mock_print.assert_called_once_with("[ ] #1  Buy milk")
+
+    def test_list_done_task(self):
+        storage.save([Task(id=1, title="Buy milk", done=True)])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            mock_print.assert_called_once_with("[x] #1  Buy milk")
+
+    def test_list_multiple_tasks(self):
+        storage.save([Task(id=1, title="A"), Task(id=2, title="B", done=True)])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            calls = [c.args[0] for c in mock_print.call_args_list]
+            self.assertEqual(calls, ["[ ] #1  A", "[x] #2  B"])
+
+    def test_list_preserves_order(self):
+        storage.save([Task(id=2, title="Second"), Task(id=1, title="First")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            calls = [c.args[0] for c in mock_print.call_args_list]
+            self.assertEqual(calls[0], "[ ] #2  Second")
+            self.assertEqual(calls[1], "[ ] #1  First")
