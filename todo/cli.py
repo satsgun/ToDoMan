@@ -39,6 +39,7 @@ def cmd_add(args: argparse.Namespace) -> None:
 
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 _RED = "\033[31m"
+_GREEN = "\033[32m"
 _RESET = "\033[0m"
 
 
@@ -61,7 +62,9 @@ def cmd_list(args: argparse.Namespace) -> None:
         line = f"[{status}] #{t.id}  {t.title}  [{t.priority}]"
         if t.due_date:
             line += f"  due:{t.due_date}"
-        if t.due_date and not t.done and date.fromisoformat(t.due_date) < today:
+        if t.done:
+            line = f"{_GREEN}{line}{_RESET}"
+        elif t.due_date and date.fromisoformat(t.due_date) < today:
             line = f"{_RED}{line}{_RESET}"
         print(line)
 
