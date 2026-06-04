@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_list, positive_int, valid_date
+from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_edit, cmd_list, positive_int, valid_date
 from todo.models import Task
 
 
@@ -332,6 +332,78 @@ class TestCmdListFilter(unittest.TestCase):
             lines = self._printed_lines(mock_print)
             self.assertIn("Buy oranges", lines[0])
             self.assertIn("Buy apples", lines[1])
+
+
+class TestCmdEdit(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+    def _edit(self, task_id: int, title: str):
+        cmd_edit(argparse.Namespace(id=task_id, title=title))
+
+    def test_edit_updates_title(self):
+        storage.save([Task(id=1, title="Old title")])
+        self._edit(1, "New title")
+        self.assertEqual(storage.load()[0].title, "New title")
+
+    def test_edit_persists_change(self):
+        storage.save([Task(id=1, title="Old title")])
+        self._edit(1, "New title")
+        self.assertEqual(storage.load()[0].title, "New title")
+
+    def test_edit_prints_confirmation(self):
+        storage.save([Task(id=1, title="Old title")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._edit(1, "New title")
+            mock_print.assert_called_once_with("Updated task #1: New title")
+
+    def test_edit_unknown_id_prints_error(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._edit(99, "Whatever")
+            mock_print.assert_called_once_with("Error: no task with ID 99.")
+
+    def test_edit_unknown_id_does_not_save(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with patch.object(storage, "save") as mock_save:
+            self._edit(99, "Whatever")
+            mock_save.assert_not_called()
+
+    def test_edit_blank_title_rejected(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with self.assertRaises(SystemExit):
+            self._edit(1, "")
+
+    def test_edit_whitespace_only_title_rejected(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with self.assertRaises(SystemExit):
+            self._edit(1, "   ")
+
+    def test_edit_strips_surrounding_whitespace(self):
+        storage.save([Task(id=1, title="Old title")])
+        self._edit(1, "  New title  ")
+        self.assertEqual(storage.load()[0].title, "New title")
+
+    def test_edit_does_not_change_other_fields(self):
+        storage.save([Task(id=1, title="Old", priority="high", done=True, due_date="2099-12-31")])
+        self._edit(1, "New title")
+        t = storage.load()[0]
+        self.assertEqual(t.priority, "high")
+        self.assertTrue(t.done)
+        self.assertEqual(t.due_date, "2099-12-31")
+
+    def test_edit_does_not_affect_other_tasks(self):
+        storage.save([Task(id=1, title="First"), Task(id=2, title="Second")])
+        self._edit(1, "Updated")
+        tasks = storage.load()
+        self.assertEqual(tasks[1].title, "Second")
 
 
 class TestCmdDone(unittest.TestCase):

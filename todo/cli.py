@@ -80,6 +80,20 @@ def cmd_done(args: argparse.Namespace) -> None:
     print(f"Error: no task with ID {args.id}.")
 
 
+def cmd_edit(args: argparse.Namespace) -> None:
+    title = args.title.strip()
+    if not title:
+        sys.exit("Error: task title cannot be blank.")
+    tasks = storage.load()
+    for t in tasks:
+        if t.id == args.id:
+            t.title = title
+            storage.save(tasks)
+            print(f"Updated task #{t.id}: {t.title}")
+            return
+    print(f"Error: no task with ID {args.id}.")
+
+
 def cmd_delete(args: argparse.Namespace) -> None:
     tasks = storage.load()
     remaining = [t for t in tasks if t.id != args.id]
@@ -119,6 +133,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_list.add_argument("--pending", action="store_true", help="Show only incomplete tasks")
     p_list.add_argument("--search", metavar="TEXT", default=None, help="Filter by keyword (case-insensitive)")
     p_list.set_defaults(func=cmd_list)
+
+    p_edit = sub.add_parser("edit", help="Edit a task's description")
+    p_edit.add_argument("id", type=positive_int, help="Task ID")
+    p_edit.add_argument("title", help="New task description")
+    p_edit.set_defaults(func=cmd_edit)
 
     p_done = sub.add_parser("done", help="Mark a task as complete")
     p_done.add_argument("id", type=positive_int, help="Task ID")
