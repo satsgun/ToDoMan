@@ -8,9 +8,11 @@ from todo.models import Task
 
 def valid_date(value: str) -> str:
     try:
-        date.fromisoformat(value)
+        parsed = date.fromisoformat(value)
     except ValueError:
         raise argparse.ArgumentTypeError(f"'{value}' is not a valid date (use YYYY-MM-DD)")
+    if parsed < date.today():
+        raise argparse.ArgumentTypeError(f"due date cannot be in the past")
     return value
 
 

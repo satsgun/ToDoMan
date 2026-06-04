@@ -44,6 +44,10 @@ class TestValidDate(unittest.TestCase):
         with self.assertRaises(argparse.ArgumentTypeError):
             valid_date("2026-13-01")
 
+    def test_past_date_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            valid_date("2000-01-01")
+
 
 class TestCmdAdd(unittest.TestCase):
     def setUp(self):
@@ -130,6 +134,11 @@ class TestCmdAdd(unittest.TestCase):
         parser = build_parser()
         with self.assertRaises(SystemExit):
             parser.parse_args(["add", "Task", "--due", "06/10/2026"])
+
+    def test_add_past_due_date_rejected(self):
+        parser = build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["add", "Task", "--due", "2000-01-01"])
 
 
 class TestCmdList(unittest.TestCase):
