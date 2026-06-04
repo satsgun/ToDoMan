@@ -105,6 +105,14 @@ class TestStorage(unittest.TestCase):
         storage.save([make_task(priority="high")])
         self.assertEqual(storage.load()[0].priority, "high")
 
+    def test_due_date_defaults_to_none(self):
+        t = Task.from_dict({"id": 1, "title": "x"})
+        self.assertIsNone(t.due_date)
+
+    def test_due_date_round_trip(self):
+        storage.save([make_task(due_date="2099-12-31")])
+        self.assertEqual(storage.load()[0].due_date, "2099-12-31")
+
 
 if __name__ == "__main__":
     unittest.main()

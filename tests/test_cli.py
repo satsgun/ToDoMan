@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_list, positive_int
+from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_list, positive_int, valid_date
 from todo.models import Task
 
 
@@ -28,6 +28,23 @@ class TestPositiveInt(unittest.TestCase):
             positive_int("abc")
 
 
+class TestValidDate(unittest.TestCase):
+    def test_valid_date_returned(self):
+        self.assertEqual(valid_date("2026-06-10"), "2026-06-10")
+
+    def test_wrong_format_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            valid_date("06/10/2026")
+
+    def test_non_date_string_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            valid_date("tomorrow")
+
+    def test_invalid_calendar_date_raises(self):
+        with self.assertRaises(argparse.ArgumentTypeError):
+            valid_date("2026-13-01")
+
+
 class TestCmdAdd(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -39,8 +56,8 @@ class TestCmdAdd(unittest.TestCase):
         self._patcher.stop()
         self._tmp.cleanup()
 
-    def _add(self, title: str, priority: str = "medium"):
-        cmd_add(argparse.Namespace(title=title, priority=priority))
+    def _add(self, title: str, priority: str = "medium", due: str | None = None):
+        cmd_add(argparse.Namespace(title=title, priority=priority, due=due))
 
     def test_add_creates_task(self):
         self._add("Buy milk")
@@ -100,6 +117,19 @@ class TestCmdAdd(unittest.TestCase):
         parser = build_parser()
         with self.assertRaises(SystemExit):
             parser.parse_args(["add", "Task", "--priority", "critical"])
+
+    def test_add_due_date_stored(self):
+        self._add("Buy milk", due="2099-12-31")
+        self.assertEqual(storage.load()[0].due_date, "2099-12-31")
+
+    def test_add_no_due_date_defaults_none(self):
+        self._add("Buy milk")
+        self.assertIsNone(storage.load()[0].due_date)
+
+    def test_add_invalid_due_date_rejected(self):
+        parser = build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["add", "Task", "--due", "06/10/2026"])
 
 
 class TestCmdList(unittest.TestCase):
@@ -168,6 +198,41 @@ class TestCmdList(unittest.TestCase):
             self._list()
             calls = [c.args[0] for c in mock_print.call_args_list]
             self.assertEqual(calls, ["[ ] #1  A  [medium]", "[x] #2  B  [medium]"])
+
+    def test_list_shows_due_date(self):
+        storage.save([Task(id=1, title="Buy milk", due_date="2099-12-31")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            mock_print.assert_called_once_with("[ ] #1  Buy milk  [medium]  due:2099-12-31")
+
+    def test_list_overdue_task_shown_in_red(self):
+        storage.save([Task(id=1, title="Fix bug", due_date="2000-01-01")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            output = mock_print.call_args[0][0]
+            self.assertTrue(output.startswith("\033[31m"))
+            self.assertTrue(output.endswith("\033[0m"))
+            self.assertIn("due:2000-01-01", output)
+
+    def test_list_future_due_not_highlighted(self):
+        storage.save([Task(id=1, title="Plan ahead", due_date="2099-12-31")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            self.assertNotIn("\033[31m", mock_print.call_args[0][0])
+
+    def test_list_done_overdue_not_highlighted(self):
+        storage.save([Task(id=1, title="Old task", done=True, due_date="2000-01-01")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            self.assertNotIn("\033[31m", mock_print.call_args[0][0])
+
+    def test_list_no_due_date_not_highlighted(self):
+        storage.save([Task(id=1, title="No due")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            output = mock_print.call_args[0][0]
+            self.assertNotIn("\033[31m", output)
+            self.assertNotIn("due:", output)
 
 
 class TestCmdDone(unittest.TestCase):
@@ -277,7 +342,7 @@ class TestCmdDelete(unittest.TestCase):
     def test_add_after_delete_uses_max_existing_id(self):
         storage.save([Task(id=1, title="A"), Task(id=3, title="C")])
         self._delete(3)
-        cmd_add(argparse.Namespace(title="D", priority="medium"))
+        cmd_add(argparse.Namespace(title="D", priority="medium", due=None))
         ids = [t.id for t in storage.load()]
         # max remaining id is 1, so next is 2 — no gap-skipping needed
         self.assertEqual(ids, [1, 2])

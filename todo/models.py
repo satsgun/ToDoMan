@@ -8,6 +8,7 @@ class Task:
     title: str
     done: bool = False
     priority: str = "medium"
+    due_date: str | None = None
     created_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -19,5 +20,6 @@ class Task:
             title=d["title"],
             done=d.get("done", False),
             priority=d.get("priority", "medium"),
+            due_date=d.get("due_date"),
             created_at=d.get("created_at", datetime.now(timezone.utc).isoformat()),
         )

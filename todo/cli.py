@@ -1,8 +1,17 @@
 import argparse
 import sys
+from datetime import date
 
 from todo import storage
 from todo.models import Task
+
+
+def valid_date(value: str) -> str:
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{value}' is not a valid date (use YYYY-MM-DD)")
+    return value
 
 
 def positive_int(value: str) -> int:
@@ -20,13 +29,15 @@ def cmd_add(args: argparse.Namespace) -> None:
     if not title:
         sys.exit("Error: task title cannot be blank.")
     tasks = storage.load()
-    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title, priority=args.priority)
+    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title, priority=args.priority, due_date=args.due)
     tasks.append(task)
     storage.save(tasks)
     print(f"Added task #{task.id}: {task.title}")
 
 
 _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+_RED = "\033[31m"
+_RESET = "\033[0m"
 
 
 def cmd_list(args: argparse.Namespace) -> None:
@@ -34,9 +45,15 @@ def cmd_list(args: argparse.Namespace) -> None:
     if not tasks:
         print("No tasks yet. Use `todo add <title>` to create one.")
         return
+    today = date.today()
     for t in sorted(tasks, key=lambda t: _PRIORITY_ORDER.get(t.priority, 1)):
         status = "x" if t.done else " "
-        print(f"[{status}] #{t.id}  {t.title}  [{t.priority}]")
+        line = f"[{status}] #{t.id}  {t.title}  [{t.priority}]"
+        if t.due_date:
+            line += f"  due:{t.due_date}"
+        if t.due_date and not t.done and date.fromisoformat(t.due_date) < today:
+            line = f"{_RED}{line}{_RESET}"
+        print(line)
 
 
 def cmd_done(args: argparse.Namespace) -> None:
@@ -78,6 +95,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["high", "medium", "low"],
         default="medium",
         help="Task priority (default: medium)",
+    )
+    p_add.add_argument(
+        "--due",
+        type=valid_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Due date",
     )
     p_add.set_defaults(func=cmd_add)
 
