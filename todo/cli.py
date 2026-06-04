@@ -20,10 +20,13 @@ def cmd_add(args: argparse.Namespace) -> None:
     if not title:
         sys.exit("Error: task title cannot be blank.")
     tasks = storage.load()
-    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title)
+    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title, priority=args.priority)
     tasks.append(task)
     storage.save(tasks)
     print(f"Added task #{task.id}: {task.title}")
+
+
+_PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def cmd_list(args: argparse.Namespace) -> None:
@@ -31,9 +34,9 @@ def cmd_list(args: argparse.Namespace) -> None:
     if not tasks:
         print("No tasks yet. Use `todo add <title>` to create one.")
         return
-    for t in tasks:
+    for t in sorted(tasks, key=lambda t: _PRIORITY_ORDER.get(t.priority, 1)):
         status = "x" if t.done else " "
-        print(f"[{status}] #{t.id}  {t.title}")
+        print(f"[{status}] #{t.id}  {t.title}  [{t.priority}]")
 
 
 def cmd_done(args: argparse.Namespace) -> None:
@@ -70,6 +73,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_add = sub.add_parser("add", help="Add a new task")
     p_add.add_argument("title", help="Task description")
+    p_add.add_argument(
+        "--priority",
+        choices=["high", "medium", "low"],
+        default="medium",
+        help="Task priority (default: medium)",
+    )
     p_add.set_defaults(func=cmd_add)
 
     p_list = sub.add_parser("list", help="List all tasks")

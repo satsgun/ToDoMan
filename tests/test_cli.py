@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
-from todo.cli import cmd_add, cmd_delete, cmd_done, cmd_list, positive_int
+from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_list, positive_int
 from todo.models import Task
 
 
@@ -39,8 +39,8 @@ class TestCmdAdd(unittest.TestCase):
         self._patcher.stop()
         self._tmp.cleanup()
 
-    def _add(self, title: str):
-        cmd_add(argparse.Namespace(title=title))
+    def _add(self, title: str, priority: str = "medium"):
+        cmd_add(argparse.Namespace(title=title, priority=priority))
 
     def test_add_creates_task(self):
         self._add("Buy milk")
@@ -84,6 +84,23 @@ class TestCmdAdd(unittest.TestCase):
         self._add("  Buy milk  ")
         self.assertEqual(storage.load()[0].title, "Buy milk")
 
+    def test_add_default_priority_is_medium(self):
+        self._add("Task")
+        self.assertEqual(storage.load()[0].priority, "medium")
+
+    def test_add_priority_high(self):
+        self._add("Urgent", priority="high")
+        self.assertEqual(storage.load()[0].priority, "high")
+
+    def test_add_priority_low(self):
+        self._add("Someday", priority="low")
+        self.assertEqual(storage.load()[0].priority, "low")
+
+    def test_add_invalid_priority_rejected(self):
+        parser = build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["add", "Task", "--priority", "critical"])
+
 
 class TestCmdList(unittest.TestCase):
     def setUp(self):
@@ -110,28 +127,47 @@ class TestCmdList(unittest.TestCase):
         storage.save([Task(id=1, title="Buy milk")])
         with unittest.mock.patch("builtins.print") as mock_print:
             self._list()
-            mock_print.assert_called_once_with("[ ] #1  Buy milk")
+            mock_print.assert_called_once_with("[ ] #1  Buy milk  [medium]")
 
     def test_list_done_task(self):
         storage.save([Task(id=1, title="Buy milk", done=True)])
         with unittest.mock.patch("builtins.print") as mock_print:
             self._list()
-            mock_print.assert_called_once_with("[x] #1  Buy milk")
+            mock_print.assert_called_once_with("[x] #1  Buy milk  [medium]")
+
+    def test_list_shows_priority(self):
+        storage.save([Task(id=1, title="Urgent", priority="high")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            mock_print.assert_called_once_with("[ ] #1  Urgent  [high]")
+
+    def test_list_sorted_by_priority(self):
+        storage.save([
+            Task(id=1, title="Low", priority="low"),
+            Task(id=2, title="High", priority="high"),
+            Task(id=3, title="Med", priority="medium"),
+        ])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            calls = [c.args[0] for c in mock_print.call_args_list]
+            self.assertEqual(calls[0], "[ ] #2  High  [high]")
+            self.assertEqual(calls[1], "[ ] #3  Med  [medium]")
+            self.assertEqual(calls[2], "[ ] #1  Low  [low]")
+
+    def test_list_same_priority_preserves_insertion_order(self):
+        storage.save([Task(id=2, title="Second"), Task(id=1, title="First")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list()
+            calls = [c.args[0] for c in mock_print.call_args_list]
+            self.assertEqual(calls[0], "[ ] #2  Second  [medium]")
+            self.assertEqual(calls[1], "[ ] #1  First  [medium]")
 
     def test_list_multiple_tasks(self):
         storage.save([Task(id=1, title="A"), Task(id=2, title="B", done=True)])
         with unittest.mock.patch("builtins.print") as mock_print:
             self._list()
             calls = [c.args[0] for c in mock_print.call_args_list]
-            self.assertEqual(calls, ["[ ] #1  A", "[x] #2  B"])
-
-    def test_list_preserves_order(self):
-        storage.save([Task(id=2, title="Second"), Task(id=1, title="First")])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            calls = [c.args[0] for c in mock_print.call_args_list]
-            self.assertEqual(calls[0], "[ ] #2  Second")
-            self.assertEqual(calls[1], "[ ] #1  First")
+            self.assertEqual(calls, ["[ ] #1  A  [medium]", "[x] #2  B  [medium]"])
 
 
 class TestCmdDone(unittest.TestCase):
@@ -241,7 +277,7 @@ class TestCmdDelete(unittest.TestCase):
     def test_add_after_delete_uses_max_existing_id(self):
         storage.save([Task(id=1, title="A"), Task(id=3, title="C")])
         self._delete(3)
-        cmd_add(argparse.Namespace(title="D"))
+        cmd_add(argparse.Namespace(title="D", priority="medium"))
         ids = [t.id for t in storage.load()]
         # max remaining id is 1, so next is 2 — no gap-skipping needed
         self.assertEqual(ids, [1, 2])

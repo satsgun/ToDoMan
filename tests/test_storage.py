@@ -97,6 +97,14 @@ class TestStorage(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 storage.save([make_task()])
 
+    def test_priority_defaults_to_medium(self):
+        t = Task.from_dict({"id": 1, "title": "x"})
+        self.assertEqual(t.priority, "medium")
+
+    def test_priority_round_trip(self):
+        storage.save([make_task(priority="high")])
+        self.assertEqual(storage.load()[0].priority, "high")
+
 
 if __name__ == "__main__":
     unittest.main()
