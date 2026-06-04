@@ -45,6 +45,14 @@ def cmd_list(args: argparse.Namespace) -> None:
     if not tasks:
         print("No tasks yet. Use `todo add <title>` to create one.")
         return
+    if args.pending:
+        tasks = [t for t in tasks if not t.done]
+    if args.search:
+        keyword = args.search.lower()
+        tasks = [t for t in tasks if keyword in t.title.lower()]
+    if not tasks:
+        print("No matching tasks.")
+        return
     today = date.today()
     for t in sorted(tasks, key=lambda t: _PRIORITY_ORDER.get(t.priority, 1)):
         status = "x" if t.done else " "
@@ -106,6 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.set_defaults(func=cmd_add)
 
     p_list = sub.add_parser("list", help="List all tasks")
+    p_list.add_argument("--pending", action="store_true", help="Show only incomplete tasks")
+    p_list.add_argument("--search", metavar="TEXT", default=None, help="Filter by keyword (case-insensitive)")
     p_list.set_defaults(func=cmd_list)
 
     p_done = sub.add_parser("done", help="Mark a task as complete")

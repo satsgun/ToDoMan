@@ -143,8 +143,8 @@ class TestCmdList(unittest.TestCase):
         self._patcher.stop()
         self._tmp.cleanup()
 
-    def _list(self):
-        cmd_list(argparse.Namespace())
+    def _list(self, pending=False, search=None):
+        cmd_list(argparse.Namespace(pending=pending, search=search))
 
     def test_list_empty(self):
         with unittest.mock.patch("builtins.print") as mock_print:
@@ -233,6 +233,96 @@ class TestCmdList(unittest.TestCase):
             output = mock_print.call_args[0][0]
             self.assertNotIn("\033[31m", output)
             self.assertNotIn("due:", output)
+
+
+class TestCmdListFilter(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+    def _list(self, pending=False, search=None):
+        cmd_list(argparse.Namespace(pending=pending, search=search))
+
+    def _printed_lines(self, mock_print):
+        return [c.args[0] for c in mock_print.call_args_list]
+
+    def test_pending_hides_done_tasks(self):
+        storage.save([Task(id=1, title="Done", done=True), Task(id=2, title="Todo")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(pending=True)
+            lines = self._printed_lines(mock_print)
+            self.assertEqual(len(lines), 1)
+            self.assertIn("#2", lines[0])
+
+    def test_pending_with_all_done_prints_no_match(self):
+        storage.save([Task(id=1, title="Done", done=True)])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(pending=True)
+            mock_print.assert_called_once_with("No matching tasks.")
+
+    def test_pending_with_no_tasks_prints_no_tasks(self):
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(pending=True)
+            mock_print.assert_called_once_with(
+                "No tasks yet. Use `todo add <title>` to create one."
+            )
+
+    def test_search_matches_keyword(self):
+        storage.save([Task(id=1, title="Buy milk"), Task(id=2, title="Write tests")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(search="milk")
+            lines = self._printed_lines(mock_print)
+            self.assertEqual(len(lines), 1)
+            self.assertIn("Buy milk", lines[0])
+
+    def test_search_is_case_insensitive(self):
+        storage.save([Task(id=1, title="Buy Milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(search="MILK")
+            lines = self._printed_lines(mock_print)
+            self.assertEqual(len(lines), 1)
+
+    def test_search_no_match_prints_no_match(self):
+        storage.save([Task(id=1, title="Buy milk")])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(search="groceries")
+            mock_print.assert_called_once_with("No matching tasks.")
+
+    def test_search_with_no_tasks_prints_no_tasks(self):
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(search="anything")
+            mock_print.assert_called_once_with(
+                "No tasks yet. Use `todo add <title>` to create one."
+            )
+
+    def test_pending_and_search_combined(self):
+        storage.save([
+            Task(id=1, title="Buy milk"),
+            Task(id=2, title="Buy eggs", done=True),
+            Task(id=3, title="Write tests"),
+        ])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(pending=True, search="buy")
+            lines = self._printed_lines(mock_print)
+            self.assertEqual(len(lines), 1)
+            self.assertIn("Buy milk", lines[0])
+
+    def test_search_result_still_sorted_by_priority(self):
+        storage.save([
+            Task(id=1, title="Buy apples", priority="low"),
+            Task(id=2, title="Buy oranges", priority="high"),
+        ])
+        with unittest.mock.patch("builtins.print") as mock_print:
+            self._list(search="buy")
+            lines = self._printed_lines(mock_print)
+            self.assertIn("Buy oranges", lines[0])
+            self.assertIn("Buy apples", lines[1])
 
 
 class TestCmdDone(unittest.TestCase):
