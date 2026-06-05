@@ -375,11 +375,6 @@ class TestCmdEdit(unittest.TestCase):
         self._edit(1, "New title")
         self.assertEqual(storage.load()[0].title, "New title")
 
-    def test_edit_persists_change(self):
-        storage.save([Task(id=1, title="Old title")])
-        self._edit(1, "New title")
-        self.assertEqual(storage.load()[0].title, "New title")
-
     def test_edit_prints_confirmation(self):
         storage.save([Task(id=1, title="Old title")])
         with unittest.mock.patch("builtins.print") as mock_print:
@@ -448,10 +443,6 @@ class TestCmdDone(unittest.TestCase):
         self._done(1)
         self.assertTrue(storage.load()[0].done)
 
-    def test_persists_done_flag(self):
-        storage.save([Task(id=1, title="Buy milk")])
-        self._done(1)
-        self.assertTrue(storage.load()[0].done)
 
     def test_prints_confirmation(self):
         storage.save([Task(id=1, title="Buy milk")])
