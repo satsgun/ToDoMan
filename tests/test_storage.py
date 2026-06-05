@@ -75,13 +75,15 @@ class TestStorage(unittest.TestCase):
         self.assertTrue(reloaded[1].done)
 
     def test_load_preserves_all_fields(self):
-        original = make_task(id=3, title="Check fields", done=True)
+        original = make_task(id=3, title="Check fields", done=True, priority="high", due_date="2099-01-15")
         storage.save([original])
         reloaded = storage.load()[0]
         self.assertEqual(reloaded.id, original.id)
         self.assertEqual(reloaded.title, original.title)
         self.assertEqual(reloaded.done, original.done)
         self.assertEqual(reloaded.created_at, original.created_at)
+        self.assertEqual(reloaded.priority, original.priority)
+        self.assertEqual(reloaded.due_date, original.due_date)
 
     def test_save_empty_list(self):
         storage.save([])
