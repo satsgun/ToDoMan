@@ -31,7 +31,12 @@ def cmd_add(args: argparse.Namespace) -> None:
     if not title:
         sys.exit("Error: task title cannot be blank.")
     tasks = storage.load()
-    task = Task(id=max((t.id for t in tasks), default=0) + 1, title=title, priority=args.priority, due_date=args.due)
+    task = Task(
+        id=max((t.id for t in tasks), default=0) + 1,
+        title=title,
+        priority=args.priority,
+        due_date=args.due,
+    )
     tasks.append(task)
     storage.save(tasks)
     print(f"Added task #{task.id}: {task.title}")
