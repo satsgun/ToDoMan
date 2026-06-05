@@ -82,7 +82,7 @@ def cmd_done(args: argparse.Namespace) -> None:
             storage.save(tasks)
             print(f"Marked task #{t.id} as done.")
             return
-    print(f"Error: no task with ID {args.id}.")
+    sys.exit(f"Error: no task with ID {args.id}.")
 
 
 def cmd_edit(args: argparse.Namespace) -> None:
@@ -96,15 +96,14 @@ def cmd_edit(args: argparse.Namespace) -> None:
             storage.save(tasks)
             print(f"Updated task #{t.id}: {t.title}")
             return
-    print(f"Error: no task with ID {args.id}.")
+    sys.exit(f"Error: no task with ID {args.id}.")
 
 
 def cmd_delete(args: argparse.Namespace) -> None:
     tasks = storage.load()
     remaining = [t for t in tasks if t.id != args.id]
     if len(remaining) == len(tasks):
-        print(f"Error: no task with ID {args.id}.")
-        return
+        sys.exit(f"Error: no task with ID {args.id}.")
     storage.save(remaining)
     print(f"Deleted task #{args.id}.")
 
