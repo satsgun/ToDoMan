@@ -30,7 +30,7 @@ class TestPositiveInt(unittest.TestCase):
 
 class TestValidDate(unittest.TestCase):
     def test_valid_date_returned(self):
-        self.assertEqual(valid_date("2026-06-10"), "2026-06-10")
+        self.assertEqual(valid_date("2099-12-31"), "2099-12-31")
 
     def test_wrong_format_raises(self):
         with self.assertRaises(argparse.ArgumentTypeError):
