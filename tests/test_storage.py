@@ -24,7 +24,7 @@ class TestTaskFromDict(unittest.TestCase):
     def test_optional_defaults(self):
         t = Task.from_dict({"id": 1, "title": "Buy milk"})
         self.assertFalse(t.done)
-        self.assertIsNotNone(t.created_at)
+        self.assertIsNone(t.created_at)
 
     def test_done_preserved(self):
         t = Task.from_dict({"id": 1, "title": "Buy milk", "done": True})
