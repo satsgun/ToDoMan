@@ -31,7 +31,7 @@ class TestTaskFromDict(unittest.TestCase):
         self.assertTrue(t.done)
 
     def test_extra_keys_ignored(self):
-        t = Task.from_dict({"id": 1, "title": "Buy milk", "priority": "high"})
+        t = Task.from_dict({"id": 1, "title": "Buy milk", "unknown_field": "value"})
         self.assertEqual(t.title, "Buy milk")
 
     def test_missing_id_raises(self):
