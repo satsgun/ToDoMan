@@ -11,6 +11,18 @@ from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_edit, cmd_
 from todo.models import Task
 
 
+class StorageTestCase(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._path = Path(self._tmp.name) / "tasks.json"
+        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+        self._tmp.cleanup()
+
+
 class TestPositiveInt(unittest.TestCase):
     def test_valid_positive(self):
         self.assertEqual(positive_int("1"), 1)
@@ -50,17 +62,7 @@ class TestValidDate(unittest.TestCase):
             valid_date("2000-01-01")
 
 
-class TestCmdAdd(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdAdd(StorageTestCase):
     def _add(self, title: str, priority: str = "medium", due: str | None = None):
         cmd_add(argparse.Namespace(title=title, priority=priority, due=due))
 
@@ -142,17 +144,7 @@ class TestCmdAdd(unittest.TestCase):
             parser.parse_args(["add", "Task", "--due", "2000-01-01"])
 
 
-class TestCmdList(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdList(StorageTestCase):
     def _list(self, pending=False, search=None):
         cmd_list(argparse.Namespace(pending=pending, search=search))
 
@@ -266,17 +258,7 @@ class TestCmdList(unittest.TestCase):
                 self.assertNotIn("\033[", output)
 
 
-class TestCmdListFilter(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdListFilter(StorageTestCase):
     def _list(self, pending=False, search=None):
         cmd_list(argparse.Namespace(pending=pending, search=search))
 
@@ -356,17 +338,7 @@ class TestCmdListFilter(unittest.TestCase):
             self.assertIn("Buy apples", lines[1])
 
 
-class TestCmdEdit(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdEdit(StorageTestCase):
     def _edit(self, task_id: int, title: str):
         cmd_edit(argparse.Namespace(id=task_id, title=title))
 
@@ -424,17 +396,7 @@ class TestCmdEdit(unittest.TestCase):
         self.assertEqual(tasks[1].title, "Second")
 
 
-class TestCmdDone(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdDone(StorageTestCase):
     def _done(self, task_id: int):
         cmd_done(argparse.Namespace(id=task_id))
 
@@ -482,17 +444,7 @@ class TestCmdDone(unittest.TestCase):
         self.assertFalse(tasks[1].done)
 
 
-class TestCmdDelete(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self._path = Path(self._tmp.name) / "tasks.json"
-        self._patcher = patch.object(storage, "STORAGE_PATH", self._path)
-        self._patcher.start()
-
-    def tearDown(self):
-        self._patcher.stop()
-        self._tmp.cleanup()
-
+class TestCmdDelete(StorageTestCase):
     def _delete(self, task_id: int):
         cmd_delete(argparse.Namespace(id=task_id))
 
