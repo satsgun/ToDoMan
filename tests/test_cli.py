@@ -386,16 +386,17 @@ class TestCmdEdit(unittest.TestCase):
             self._edit(1, "New title")
             mock_print.assert_called_once_with("Updated task #1: New title")
 
-    def test_edit_unknown_id_prints_error(self):
+    def test_edit_unknown_id_exits_with_error(self):
         storage.save([Task(id=1, title="Buy milk")])
-        with unittest.mock.patch("builtins.print") as mock_print:
+        with self.assertRaises(SystemExit) as ctx:
             self._edit(99, "Whatever")
-            mock_print.assert_called_once_with("Error: no task with ID 99.")
+        self.assertEqual(ctx.exception.code, "Error: no task with ID 99.")
 
     def test_edit_unknown_id_does_not_save(self):
         storage.save([Task(id=1, title="Buy milk")])
         with patch.object(storage, "save") as mock_save:
-            self._edit(99, "Whatever")
+            with self.assertRaises(SystemExit):
+                self._edit(99, "Whatever")
             mock_save.assert_not_called()
 
     def test_edit_blank_title_rejected(self):
@@ -458,15 +459,16 @@ class TestCmdDone(unittest.TestCase):
             self._done(1)
             mock_print.assert_called_once_with("Marked task #1 as done.")
 
-    def test_unknown_id_prints_error(self):
+    def test_unknown_id_exits_with_error(self):
         storage.save([Task(id=1, title="Buy milk")])
-        with unittest.mock.patch("builtins.print") as mock_print:
+        with self.assertRaises(SystemExit) as ctx:
             self._done(99)
-            mock_print.assert_called_once_with("Error: no task with ID 99.")
+        self.assertEqual(ctx.exception.code, "Error: no task with ID 99.")
 
     def test_unknown_id_does_not_save(self):
         storage.save([Task(id=1, title="Buy milk")])
-        self._done(99)
+        with self.assertRaises(SystemExit):
+            self._done(99)
         self.assertFalse(storage.load()[0].done)
 
     def test_already_done_prints_notice(self):
@@ -514,15 +516,16 @@ class TestCmdDelete(unittest.TestCase):
             self._delete(1)
             mock_print.assert_called_once_with("Deleted task #1.")
 
-    def test_unknown_id_prints_error(self):
+    def test_unknown_id_exits_with_error(self):
         storage.save([Task(id=1, title="Buy milk")])
-        with unittest.mock.patch("builtins.print") as mock_print:
+        with self.assertRaises(SystemExit) as ctx:
             self._delete(99)
-            mock_print.assert_called_once_with("Error: no task with ID 99.")
+        self.assertEqual(ctx.exception.code, "Error: no task with ID 99.")
 
     def test_unknown_id_does_not_modify_tasks(self):
         storage.save([Task(id=1, title="Buy milk")])
-        self._delete(99)
+        with self.assertRaises(SystemExit):
+            self._delete(99)
         self.assertEqual(len(storage.load()), 1)
 
     def test_delete_only_removes_target(self):
