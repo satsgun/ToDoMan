@@ -9,17 +9,40 @@ A minimal command-line to-do manager.
 
 ## Installation
 
+### As an installable package (recommended)
+
 ```bash
 git clone <repo-url>
 cd TodoMan_prj1
+pip install -e .
+```
+
+After installation, run as:
+
+```bash
+todo <command>
+```
+
+Alternatively, use `pipx` for an isolated install:
+
+```bash
+pipx install .
+```
+
+### As a script (no install required)
+
+```bash
+git clone <repo-url>
+cd TodoMan_prj1
+python3 main.py <command>
+# or
+python3 -m todo <command>
 ```
 
 ## Usage
 
-```bash
-python3 main.py <command>
-# or
-python3 -m todo <command>
+```
+todo <command> [options]
 ```
 
 ### Commands
@@ -27,35 +50,50 @@ python3 -m todo <command>
 | Command | Description |
 |---|---|
 | `add <title>` | Add a new task |
-| `list` | List all tasks |
+| `add <title> --priority high\|medium\|low` | Add with priority (default: medium) |
+| `add <title> --due YYYY-MM-DD` | Add with a due date |
+| `list` | List all tasks, sorted by priority |
+| `list --pending` | Show only incomplete tasks |
+| `list --search <text>` | Filter tasks by keyword (case-insensitive) |
+| `edit <id> <title>` | Update a task's description |
 | `done <id>` | Mark a task as complete |
 | `delete <id>` | Delete a task |
+
+### Output formatting
+
+- Overdue tasks are highlighted in **red**
+- Completed tasks are shown in **green**
+- Tasks are sorted by priority: high → medium → low
 
 ### Example session
 
 ```
-$ python3 main.py add "Buy milk"
+$ todo add "Buy milk"
 Added task #1: Buy milk
 
-$ python3 main.py add "Write tests"
-Added task #2: Write tests
+$ todo add "Fix critical bug" --priority high --due 2026-06-10
+Added task #2: Fix critical bug
 
-$ python3 main.py list
-[ ] #1  Buy milk
-[ ] #2  Write tests
+$ todo add "Read book" --priority low
+Added task #3: Read book
 
-$ python3 main.py done 1
+$ todo list
+[ ] #2  Fix critical bug  [high]  due:2026-06-10
+[ ] #1  Buy milk  [medium]
+[ ] #3  Read book  [low]
+
+$ todo done 1
 Marked task #1 as done.
 
-$ python3 main.py list
-[x] #1  Buy milk
-[ ] #2  Write tests
+$ todo edit 3 "Read two books"
+Updated task #3: Read two books
 
-$ python3 main.py delete 2
+$ todo list --pending
+[ ] #2  Fix critical bug  [high]  due:2026-06-10
+[ ] #3  Read two books  [low]
+
+$ todo delete 2
 Deleted task #2.
-
-$ python3 main.py list
-[x] #1  Buy milk
 ```
 
 ## Storage

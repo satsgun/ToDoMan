@@ -26,9 +26,9 @@ No build or lint step — zero external dependencies, stdlib only.
 
 The app is a pure-stdlib CLI todo manager. Data flows: `cli.py` parses arguments → calls command functions → delegates to `storage.py` → reads/writes `~/.todoman.json`.
 
-- **`todo/models.py`** — `Task` dataclass (`id`, `title`, `done`, `priority`, `created_at`). `Task.from_dict()` is the only deserializer; optional fields default gracefully so old JSON without them still loads. Extra keys are silently ignored.
+- **`todo/models.py`** — `Task` dataclass (`id`, `title`, `done`, `priority`, `due_date`, `created_at`). `Task.from_dict()` is the only deserializer; optional fields default gracefully so old JSON without them still loads. Extra keys are silently ignored.
 - **`todo/storage.py`** — `load()` / `save()` against `STORAGE_PATH = ~/.todoman.json`. Both call `sys.exit()` on IO/JSON errors rather than raising. Tests patch `storage.STORAGE_PATH` to a temp file to isolate disk state.
-- **`todo/cli.py`** — `argparse`-based subcommands (`add`, `list`, `done`, `delete`). Each `cmd_*` function accepts `argparse.Namespace`. `build_parser()` wires subcommands; `main()` is the entry point.
+- **`todo/cli.py`** — `argparse`-based subcommands (`add`, `list`, `edit`, `done`, `delete`). Each `cmd_*` function accepts `argparse.Namespace`. `build_parser()` wires subcommands; `main()` is the entry point. `add` accepts `--priority` and `--due YYYY-MM-DD` (past dates rejected). `list` accepts `--pending` (incomplete only) and `--search TEXT` (keyword filter). `edit` takes an ID and new title.
 - **`main.py`** — thin shim that calls `todo.cli.main()`.
 - **`todo/__main__.py`** — enables `python3 -m todo`.
 
