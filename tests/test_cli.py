@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from todo import storage
+from todo import cli as todo_cli
 from todo.cli import build_parser, cmd_add, cmd_delete, cmd_done, cmd_edit, cmd_list, positive_int, valid_date
 from todo.models import Task
 
@@ -170,12 +171,13 @@ class TestCmdList(unittest.TestCase):
 
     def test_list_done_task_shown_in_green(self):
         storage.save([Task(id=1, title="Buy milk", done=True)])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            output = mock_print.call_args[0][0]
-            self.assertTrue(output.startswith("\033[32m"))
-            self.assertTrue(output.endswith("\033[0m"))
-            self.assertIn("[x] #1  Buy milk  [medium]", output)
+        with patch.object(todo_cli, "_USE_COLOR", True):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                output = mock_print.call_args[0][0]
+                self.assertTrue(output.startswith("\033[32m"))
+                self.assertTrue(output.endswith("\033[0m"))
+                self.assertIn("[x] #1  Buy milk  [medium]", output)
 
     def test_list_shows_priority(self):
         storage.save([Task(id=1, title="Urgent", priority="high")])
@@ -206,13 +208,14 @@ class TestCmdList(unittest.TestCase):
 
     def test_list_multiple_tasks(self):
         storage.save([Task(id=1, title="A"), Task(id=2, title="B", done=True)])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            calls = [c.args[0] for c in mock_print.call_args_list]
-            self.assertIn("[ ] #1  A  [medium]", calls[0])
-            self.assertIn("[x] #2  B  [medium]", calls[1])
-            self.assertNotIn("\033[", calls[0])
-            self.assertIn("\033[32m", calls[1])
+        with patch.object(todo_cli, "_USE_COLOR", True):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                calls = [c.args[0] for c in mock_print.call_args_list]
+                self.assertIn("[ ] #1  A  [medium]", calls[0])
+                self.assertIn("[x] #2  B  [medium]", calls[1])
+                self.assertNotIn("\033[", calls[0])
+                self.assertIn("\033[32m", calls[1])
 
     def test_list_shows_due_date(self):
         storage.save([Task(id=1, title="Buy milk", due_date="2099-12-31")])
@@ -222,26 +225,29 @@ class TestCmdList(unittest.TestCase):
 
     def test_list_overdue_task_shown_in_red(self):
         storage.save([Task(id=1, title="Fix bug", due_date="2000-01-01")])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            output = mock_print.call_args[0][0]
-            self.assertTrue(output.startswith("\033[31m"))
-            self.assertTrue(output.endswith("\033[0m"))
-            self.assertIn("due:2000-01-01", output)
+        with patch.object(todo_cli, "_USE_COLOR", True):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                output = mock_print.call_args[0][0]
+                self.assertTrue(output.startswith("\033[31m"))
+                self.assertTrue(output.endswith("\033[0m"))
+                self.assertIn("due:2000-01-01", output)
 
     def test_list_future_due_not_highlighted(self):
         storage.save([Task(id=1, title="Plan ahead", due_date="2099-12-31")])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            self.assertNotIn("\033[31m", mock_print.call_args[0][0])
+        with patch.object(todo_cli, "_USE_COLOR", True):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                self.assertNotIn("\033[31m", mock_print.call_args[0][0])
 
     def test_list_done_overdue_shown_in_green_not_red(self):
         storage.save([Task(id=1, title="Old task", done=True, due_date="2000-01-01")])
-        with unittest.mock.patch("builtins.print") as mock_print:
-            self._list()
-            output = mock_print.call_args[0][0]
-            self.assertIn("\033[32m", output)
-            self.assertNotIn("\033[31m", output)
+        with patch.object(todo_cli, "_USE_COLOR", True):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                output = mock_print.call_args[0][0]
+                self.assertIn("\033[32m", output)
+                self.assertNotIn("\033[31m", output)
 
     def test_list_no_due_date_not_highlighted(self):
         storage.save([Task(id=1, title="No due")])
@@ -250,6 +256,14 @@ class TestCmdList(unittest.TestCase):
             output = mock_print.call_args[0][0]
             self.assertNotIn("\033[31m", output)
             self.assertNotIn("due:", output)
+
+    def test_list_no_color_when_not_tty(self):
+        storage.save([Task(id=1, title="Old task", done=True, due_date="2000-01-01")])
+        with patch.object(todo_cli, "_USE_COLOR", False):
+            with unittest.mock.patch("builtins.print") as mock_print:
+                self._list()
+                output = mock_print.call_args[0][0]
+                self.assertNotIn("\033[", output)
 
 
 class TestCmdListFilter(unittest.TestCase):

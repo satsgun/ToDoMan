@@ -41,6 +41,7 @@ _PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 _RED = "\033[31m"
 _GREEN = "\033[32m"
 _RESET = "\033[0m"
+_USE_COLOR = sys.stdout.isatty()
 
 
 def cmd_list(args: argparse.Namespace) -> None:
@@ -62,10 +63,11 @@ def cmd_list(args: argparse.Namespace) -> None:
         line = f"[{status}] #{t.id}  {t.title}  [{t.priority}]"
         if t.due_date:
             line += f"  due:{t.due_date}"
-        if t.done:
-            line = f"{_GREEN}{line}{_RESET}"
-        elif t.due_date and date.fromisoformat(t.due_date) < today:
-            line = f"{_RED}{line}{_RESET}"
+        if _USE_COLOR:
+            if t.done:
+                line = f"{_GREEN}{line}{_RESET}"
+            elif t.due_date and date.fromisoformat(t.due_date) < today:
+                line = f"{_RED}{line}{_RESET}"
         print(line)
 
 
