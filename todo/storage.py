@@ -19,6 +19,12 @@ def load() -> list[Task]:
             f"Details: {exc}\n"
             "Please fix or delete the file and try again."
         )
+    if not isinstance(raw, list):
+        sys.exit(
+            f"Error: {STORAGE_PATH} has unexpected format "
+            f"(expected a JSON array, got {type(raw).__name__}).\n"
+            "Please fix or delete the file and try again."
+        )
     return [Task.from_dict(d) for d in raw]
 
 
