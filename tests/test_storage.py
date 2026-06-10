@@ -94,6 +94,17 @@ class TestStorage(unittest.TestCase):
         with self.assertRaises(SystemExit):
             storage.load()
 
+    def test_load_non_list_json_exits(self):
+        for value in ({}, 42):
+            with self.subTest(value=value):
+                self._path.write_text(json.dumps(value))
+                with self.assertRaises(SystemExit) as ctx:
+                    storage.load()
+                message = str(ctx.exception)
+                self.assertIn("expected a JSON array", message)
+                self.assertIn(type(value).__name__, message)
+                self.assertIn("fix or delete", message)
+
     def test_save_oserror_exits(self):
         with unittest.mock.patch("pathlib.Path.write_text", side_effect=OSError("disk full")):
             with self.assertRaises(SystemExit):
